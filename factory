@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+
+require 'bundler'
+Bundler.require
+
+require_relative 'app/csv_generator'
+
+opts = Optimist::options do
+  version '0.0.1'
+  banner <<~USAGE
+    Usage:
+      1. new <name>
+      2. edit line/<name>/...
+      3. factory <name> +[options] # <= Now here
+
+    Currently available <name>:
+    #{Dir.glob('line/*').map{|path| ['  ', File.basename(path)].join }.join("\n") }
+
+    where [options] are:
+  USAGE
+  opt :row_count,  'default: 10',            short: :c, type: :integer
+  opt :file,       'default: "<name>.csv"',  short: :f, type: :string
+  opt :header,     'default: "true"',        short: :H, type: :string
+  opt :separator,  'default: ","',           short: :s, type: :string
+  opt :quotes,     'default: "false"',       short: :q, type: :string
+  opt :config,     'overwrite config(JSON)', short: :o, type: :string
+  opt :bom,        'With BOM',               short: :b, type: :boolean
+  opt :shift_jis,  'Output with shift_jis',  short: :S, type: :boolean
+  opt :windows31j, 'Output with Windows31J', short: :W, type: :boolean
+end
+
+options = {}
+options[:file]       = opts.file if opts.file_given
+options[:row_count]  = opts.row_count if opts.row_count_given
+options[:separator]  = opts.separator if opts.separator_given
+options[:header]     = { true: true, false: false }[opts.header.to_sym] if opts.header_given
+options[:quotes]     = { true: true, false: false }[opts.quotes.to_sym] if opts.quotes_given
+options[:bom]        = opts.bom if opts.bom_given
+options[:shift_jis]  = opts.shift_jis if opts.shift_jis_given
+options[:windows31j] = opts.windows31j if opts.windows31j_given
+
+options.merge!(JSON.parse(opts.config || '{}', symbolize_names: true))
+
+Faker::Config.locale = :ja
+
+CsvGenerator.run(ARGV[0].split("/").last, **options)
